@@ -97,6 +97,7 @@ func (c *RedisCodeCache) key(biz, phone string) string {
 // LocalCodeCache 假如说你要切换这个，你是不是得把 lua 脚本的逻辑，在这里再写一遍？
 type LocalCodeCache struct {
 	client *LocalCache.Cache
+	rw   sync.RWMutex
 }
 
 func (c *LocalCodeCache) localKey(biz, phone string) string {
@@ -107,6 +108,8 @@ func (c *LocalCodeCache) localCntKey(biz, phone string) string {
 }
 
 func (c *LocalCodeCache) Set(ctx context.Context, biz, phone, code string) error {
+	ms.rw.RLock()
+	defer ms.rw.RUnlock()
 	key := c.localKey(biz, phone)
 	cntKey := c.localCntKey(biz, phone)
 	_, expiredTime, found := c.client.GetWithExpiration(key)
@@ -123,6 +126,8 @@ func (c *LocalCodeCache) Set(ctx context.Context, biz, phone, code string) error
 }
 
 func (c *LocalCodeCache) Verify(ctx context.Context, biz, phone, inputCode string) (bool, error) {
+	ms.rw.RLock()
+	defer ms.rw.RUnlock()
 	key := c.localKey(biz, phone)
 	cntKey := c.localCntKey(biz, phone)
 	expectedCodeObj, _ := c.client.Get(key)
